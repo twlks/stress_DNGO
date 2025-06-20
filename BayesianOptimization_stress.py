@@ -15,7 +15,7 @@ Nx = 1
 Ny = 1
 X = [200, -200]
 Y = [-100, 100]
-weight_force = 0.00005 #函数返回值中受力平衡所占权重
+# weight_force = 0.00005 #函数返回值中受力平衡所占权重
 
 # 添加矩阵
 def read_mat_rows(file_path, variable_name, row_indices):
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         random_state=1
     )
 
-    # 开始优化（移除callback参数）
+    # 开始优化
     optimizer.maximize(init_points=100, n_iter=1000)
 
     # 手动处理优化历史
@@ -137,7 +137,7 @@ if __name__ == '__main__':
         if current_result > current_max:
             current_max = current_result
             max_eff_indices.append(i)
-            # 保存当前最优参数（转换为物理量）
+            # 保存当前最优参数
             params = list(res['params'].values())
             optimized_params = [
                 p * Nx if i < len(selected_indices) else p * Ny
@@ -146,9 +146,8 @@ if __name__ == '__main__':
             param_history.append(optimized_params)
         max_eff_list.append(current_max)
         i+=1
-    # 注册回调函数，在每次迭代后执行记录
 
-    # 输出最优结果（与原逻辑一致）
+    # 输出最优结果
     max_result = optimizer.max
     max_efficiency = max_result['target']
     max_params = [
@@ -163,7 +162,7 @@ if __name__ == '__main__':
             "positions": selected_indices
         }, f, indent=4)
 
-    # 绘制迭代次数-最大效率图（与原逻辑一致）
+    # 绘制迭代次数-最大效率图
     plt.figure(figsize=(10, 6))
     plt.plot(range(1, len(max_eff_list) + 1), max_eff_list, marker='o')
     plt.xlabel('number of iterations')
@@ -175,7 +174,7 @@ if __name__ == '__main__':
 
     true_params = X + Y  # 合并X和Y为完整的真实参数列表
 
-    # 绘制参数优化历史（关键修改：使用param_history）
+    # 绘制参数优化历史
     if param_history:  # 确保有记录的参数历史
         param_history_array = np.array(param_history)
         num_params = param_history_array.shape[1]
@@ -198,7 +197,7 @@ if __name__ == '__main__':
             bbox_to_anchor=(1.05, 1), loc='upper left', frameon=True,
             framealpha=0.8, ncol=2, fontsize=9, borderpad=0.5, labelspacing=0.3
         )
-        # x轴标注为迭代次数（从1开始）
+        # x轴标注为迭代次数
         plt.xticks(range(1, len(param_history) + 1),
                    [f'Iter {idx + 1}' for idx in max_eff_indices],
                    rotation=45)
