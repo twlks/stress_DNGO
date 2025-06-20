@@ -27,6 +27,8 @@ Nx = 1
 # Y = [100, -50, 300, -200, -250, 100]
 X = [200, -200]
 Y = [100, -100]
+weight_force = 0.00005 #函数返回值中受力平衡所占权重
+MAXN = 99999999
 
 # 添加矩阵
 def read_mat_rows(file_path, variable_name, row_indices):
@@ -91,23 +93,26 @@ def best(stress):  # 计算y值，U0需已知，U需已知
     # 初始化加权和矩阵
     weighted_sum_u = np.zeros_like(U0)
     weighted_sum_v = np.zeros_like(V0)
+    sumx = 0
+    sumy = 0
     # 计算加权和
     for i in range(len(stress)):
         if i<len(selected_indices):
             weighted_sum_u += stress[i] * U[i] * Nx
             weighted_sum_v += stress[i] * V[i] * Nx
+            sumx += stress[i]
         else:
             weighted_sum_u += stress[i] * U[i] * Ny
             weighted_sum_v += stress[i] * V[i] * Ny
+            sumy += stress[i]
     # print(weighted_sum_u)
     # print(weighted_sum_v)
     y = np.sum((weighted_sum_u - U0) ** 2)
     y += np.sum((weighted_sum_v - V0) ** 2)
     if y==0:
-        return np.inf
-    return 1 / y  # 由于DNGO算法要求最大化，所以这里返回1/y
-
-
+        return MAXN
+    return 1 / y # 由于DNGO算法要求最大化，所以这里返回1/y
+    # return (1 / y - weight_force * (sumx ** 2 + sumy ** 2))
 
 class Spp:
     def __init__(self, layers):
@@ -158,7 +163,10 @@ class DNGOptimizer:
     def maximize(self, init_points=5, n_iter=25):
         # 初始化样本点
         for _ in range(init_points):
+        # for _ in range(init_points ** len(self.pbounds)):
             params = {k: int(np.random.uniform(*v)) for k, v in self.pbounds.items()}  # 随机选取init_points个参数并保留整数
+            # params = {k: int(np.linspace(v[0], v[1], init_points)[np.random.randint(0, init_points)])
+                      # for k, v in self.pbounds.items()}
             result = self.f(**params)
             self.samples.append(list(params.values()))
             self.targets.append(result)
@@ -204,10 +212,10 @@ if __name__ == '__main__':
     load_global_matrices()
     global N_low, N_high
     # 定义力元结构
-    N_low = [-400, -400, -400, -400]
-    N_high = [400, 400, 400, 400]
-    l_low = [-300,-200,-150,-100,-100,-50,-50]
-    l_high = [300,200,150,100,100,50,50]
+    N_low = [0, -400, 0, -400]
+    N_high = [400, 0, 400, 0]
+    l_low = [-200,-150,-100,-100,-50,-50,-30]
+    l_high = [200,150,100,100,50,50,30]
 
     max_eff_list = []  # 最大效率历史
     max_param_list = []  # 对应参数配置历史
@@ -234,7 +242,7 @@ if __name__ == '__main__':
         )
 
         init_=100
-        n_=250
+        n_=150
 
         optimizer.maximize(init_points=init_, n_iter=n_)  # 初始点和迭代次数可以根据需要调整
 
@@ -246,12 +254,12 @@ if __name__ == '__main__':
         s = optimizer.samples[max_index]
         for i, x in enumerate(s):
             if i < len(selected_indices):  # 前len(selected_indices)个元素
-                new_low.append(max(x * Nx + l_low[numbers],-400))
-                new_high.append(min(x * Ny + l_high[numbers],400))
+                new_low.append(max(x * Nx + l_low[numbers], N_low[i]))
+                new_high.append(min(x * Ny + l_high[numbers], N_high[i]))
                 max_params.append(x * Nx)
             else:  # 其余元素
-                new_low.append(max(x * Nx + l_low[numbers], -400))
-                new_high.append(min(x * Ny + l_high[numbers], 400))
+                new_low.append(max(x * Nx + l_low[numbers], N_low[i]))
+                new_high.append(min(x * Ny + l_high[numbers], N_high[i]))
                 max_params.append(x * Ny)
         N_low = new_low
         N_high = new_high
